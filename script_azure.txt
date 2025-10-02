@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# SCRIPT ATUALIZADO PARA CRIAÇÃO FULL DO AMBIENTE IDEA TEC NA AZURE (2025)
+# Região, nomes e senha ajustados conforme solicitado nas conversas!
+
+# =========================
+# Variáveis de configuração
+# =========================
+
+RESOURCE_GROUP="rg-ideatec"
+LOCATION="brazilsouth"
+APP_SERVICE_PLAN="plan-ideatec"
+WEBAPP_NAME="webapp-ideatec"
+POSTGRES_SERVER="postgres-flex-ideatec"      # nome do flexible server padrão do projeto
+POSTGRES_ADMIN="admin_ideatec"
+POSTGRES_PASSWORD="Ideatec558514"            # Atualizada, sem caractere especial, conforme senha real utilizada
+POSTGRES_DB="db_ideatec"
+APP_INSIGHTS_NAME="appinsights-ideatec"
+
+echo "Registrando Providers necessários..."
+az provider register --namespace Microsoft.Web
+az provider register --namespace Microsoft.DBforPostgreSQL
+az provider register --namespace Microsoft.Insights
+
+echo "CRIANDO RESOURCE GROUP..."
+az group create --name $RESOURCE_GROUP --location $LOCATION
+
+echo "CRIANDO APP SERVICE PLAN B1 LINUX..."
+az appservice plan create \
+  --name $APP_SERVICE_PLAN \
+  --resource-group $RESOURCE_GROUP \
+  --sku B1 \
+  --is-linux
+
+echo "CRIANDO POSTGRESQL FLEXIBLE SERVER..."
+az postgres flexible-server create \
+  --resource-group $RESOURCE_GROUP \
+  --name $POSTGRES_SERVER \
+  --location $LOCATION \
+  --admin-user $POSTGRES_ADMIN \
+  --admin-password $POSTGRES_PASSWORD \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --storage-size 32 \
+  --version 13 \
+  --public-access 0.0.0.0
+
+echo "CRIANDO BANCO DE DADOS PADRÃO NO SERVIDOR POSTGRES..."
+az postgres flexible-server db create \
+  --resource-group $RESOURCE_GROUP \
+  --server-name $POSTGRES_SERVER \
+  --database-name $POSTGRES_DB
+
+echo "LIBERANDO FIREWALL PARA AZURE (0.0.0.0 = libera para Azure services e IP específico)..."
+az postgres flexible-server firewall-rule create \
+  --resource-group $RESOURCE_GROUP \
+  --name "AllowAzureIPs" \
+  --server-name $POSTGRES_SERVER \
+  --start-ip-address 0.0.0.0 \
+  --end-ip-address 0.0.0.0
+
+echo "CRIANDO APPLICATION INSIGHTS..."
+az monitor app-insights component create \
+  --app $APP_INSIGHTS_NAME \
+  --location $LOCATION \
+  --resource-group $RESOURCE_GROUP \
+  --application-type web
+
+echo "CRIANDO WEB APP LINUX JAVA 17..."
+az webapp create \
+  --resource-group $RESOURCE_GROUP \
+  --plan $APP_SERVICE_PLAN \
+  --name $WEBAPP_NAME \
+  --runtime "JAVA|17-java17" \
+  --deployment-local-git
+
+echo "CONFIGURANDO VARIÁVEIS DE AMBIENTE DO SPRING BOOT E INSIGHTS..."
+az webapp config appsettings set \
+  --resource-group $RESOURCE_GROUP \
+  --name $WEBAPP_NAME \
+  --settings \
+    SPRING_DATASOURCE_URL="jdbc:postgresql://$POSTGRES_SERVER.postgres.database.azure.com:5432/$POSTGRES_DB?sslmode=require" \
+    SPRING_DATASOURCE_USERNAME="$POSTGRES_ADMIN" \
+    SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD" \
+    APPINSIGHTS_INSTRUMENTATIONKEY="$(az monitor app-insights component show --app $APP_INSIGHTS_NAME --resource-group $RESOURCE_GROUP --query instrumentationKey -o tsv)" \
+    JAVA_OPTS="-Djava.security.egd=file:/dev/./urandom"
+
+echo "CONFIGURANDO LOGS NO WEB APP AZURE..."
+az webapp log config \
+  --resource-group $RESOURCE_GROUP \
+  --name $WEBAPP_NAME \
+  --application-logging filesystem \
+  --web-server-logging filesystem \
+  --detailed-error-messages true \
+  --failed-request-tracing true
+
+echo
+echo "-------------------------------------------"
+echo "RESUMO FINAL:"
+echo "Resource Group.................: $RESOURCE_GROUP"
+echo "Localização (região)...........: $LOCATION"
+echo "App Service Plan...............: $APP_SERVICE_PLAN (Linux, SKU B1)"
+echo "PostgreSQL Flexible Server.....: $POSTGRES_SERVER"
+echo "Usuário Admin/Senha DB.........: $POSTGRES_ADMIN / $POSTGRES_PASSWORD"
+echo "Database criado................: $POSTGRES_DB"
+echo "Web App URL....................: https://$WEBAPP_NAME.azurewebsites.net"
+echo "Application Insights...........: $APP_INSIGHTS_NAME"
+echo
+echo "O ambiente está PRONTO para deploy da aplicação Spring Boot conectada ao PostgreSQL!"
+echo "Para deploy via Git:"
+echo "Execute 'az webapp deployment source config-local-git --name $WEBAPP_NAME --resource-group $RESOURCE_GROUP' e use o URL gerado."
+echo
+echo "-------------------------------------------"

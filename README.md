@@ -1,88 +1,153 @@
-🏍️ Mottu API – Sistema de Gerenciamento de Motos
-📄 Descrição do Projeto
-Este projeto é uma API REST desenvolvida em Java com Spring Boot, que oferece funcionalidades de gestão de motos, clientes e suas relações, permitindo controle, consulta e atualização dos dados. Foi criado como parte do Challenge da disciplina Java Advanced.
+# 🚀 Projeto IdeaTec – Sprint 3 DevOps
 
-A API permite operações como:
+Este projeto atende ao desafio da matéria Java DevOps FIAP, consistindo em backend Java Spring Boot com banco de dados PostgreSQL hospedado no Azure, totalmente integrado às melhores práticas de cloud e DevOps.
 
-Cadastro, edição, listagem e exclusão de motos e clientes.
+## 📁 Repositório oficial
 
-Busca com filtros, paginação e ordenação.
+Clonar o código-fonte diretamente via:
 
-Validação de dados na entrada.
+```
+git clone https://github.com/Pedro-Ladeira/Sprint-3_DevOps.git
+```
 
-Cache de consultas para melhorar a performance.
+## 💻 1. Pré-requisitos
 
-Tratamento de erros centralizado e boas práticas de design REST.
+- Java 17 instalado (JDK)
+- Maven instalado (`mvn -v`)
+- Git instalado
+- PostgreSQL Client (opcional, para debug manual)
+- Conta ativa na Azure (para deploy e uso dos resources cloud)
 
------------------------------------------------------------------------
+## 🐘 2. Banco de Dados Azure PostgreSQL
 
-👨‍💻 Desenvolvedores:
+O projeto acessa o banco do Azure:
 
-Carlos Eduardo R C Pacheco – RM: 557323
+- Servidor: **postgres-flex-ideatec.postgres.database.azure.com**
+- Banco: **db_ideatec**
+- Usuário: **admin_ideatec**
+- Senha: **Ideatec558514**
 
-João Pedro Amorim Brito Virgens – RM: 559213
+> As tabelas já foram criadas e populadas via script SQL (veja [database.sql](database.sql) neste projeto, se quiser rodar manualmente).
 
-Pedro Augusto Costa Ladeira – RM: 558514
+## ⚙️ 3. Como Rodar Localmente
 
------------------------------------------------------------------------
+1. **Clonar o repositório**
+   ```
+   git clone https://github.com/Pedro-Ladeira/Sprint-3_DevOps.git
+   cd Sprint-3_DevOps
+   ```
 
-🚀 Tecnologias Utilizadas
-Java 17
+2. **Configurar as credenciais do banco em `src/main/resources/application.properties`**:
 
-Spring Boot 3.2.5
+   ```
+   spring.datasource.url=jdbc:postgresql://postgres-flex-ideatec.postgres.database.azure.com:5432/db_ideatec?sslmode=require
+   spring.datasource.username=admin_ideatec
+   spring.datasource.password=Ideatec558514
+   spring.datasource.driver-class-name=org.postgresql.Driver
+   spring.jpa.hibernate.ddl-auto=none
+   spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+   ```
 
-Spring Web
+3. **Instalar dependências**
+   ```
+   mvn clean install
+   ```
 
-Spring Data JPA
+4. **Rodar localmente**
+   ```
+   mvn spring-boot:run
+   ```
 
-Spring Validation
+5. **Acessar e testar o backend**
+   - Acesse: [http://localhost:8080](http://localhost:8080)
+   - Teste endpoints REST da API com [Postman](https://www.postman.com/) ou via navegador:
+     - Lista de motos: [http://localhost:8080/motos](http://localhost:8080/motos)
+     - CRUD de qualquer entidade: consultar o controller correspondente
 
-Spring Cache
+## 🌐 4. Como Deployar na Azure Web App
 
-Maven
+> *Se você for o responsável pelo deploy, siga este guia. Caso sua faculdade já tenha o ambiente pronto, apenas atualize o código.*
 
-Oracle Database
+1. **Preparar ambiente cloud pelo script Bash do projeto** (veja [scripts/cria_azure.sh](scripts/cria_azure.sh))
+   - Crie recursos Azure: Resource Group, Flex Server PostgreSQL, App Service Plan, Web App, Application Insights
 
-Hibernate
+2. **Obter URL Git do Azure para deploy**:
+   ```
+   az webapp deployment source config-local-git --name webapp-ideatec --resource-group rg-ideatec
+   ```
 
-Lombok (opcional)
+3. **Adicionar o remote Azure ao seu projeto local**
+   ```
+   git remote add azure https://<deployment-user>@webapp-ideatec.scm.azurewebsites.net/webapp-ideatec.git
+   ```
 
------------------------------------------------------------------------
+4. **Deploy para Azure Web App**
+   ```
+   git push azure main
+   ```
 
-⚙️ Como Executar o Projeto
-🔧 Pré-requisitos
-Java JDK 17 instalado
+5. **Acesse online**
+   - [https://webapp-ideatec.azurewebsites.net](https://webapp-ideatec.azurewebsites.net)
 
-Oracle Database rodando (local ou remoto)
+6. **Variáveis de ambiente do Web App**:
+   - Configure via portal Azure/Script Bash:
+     - `SPRING_DATASOURCE_URL`
+     - `SPRING_DATASOURCE_USERNAME`
+     - `SPRING_DATASOURCE_PASSWORD`
+     - `APPINSIGHTS_INSTRUMENTATIONKEY`
 
-Maven instalado
+## 💡 5. Testando o CRUD (WEB/API)
 
-IDE de sua escolha (IntelliJ, Eclipse, VS Code)
+- Use **Postman**, **Insomnia** ou outro client REST para testar todos os endpoints.  
+  Exemplos:
+  - **GET** /motos – Lista motos cadastradas
+  - **POST** /motos – Insere nova moto
+  - **PUT** /motos/{id} – Atualiza moto existente
+  - **DELETE** /motos/{id} – Exclui moto cadastrada
 
------------------------------------------------------------------------
+- As alterações na API são refletidas diretamente no banco PostgreSQL Azure!  
+  Para checar manualmente via CLI:
+  ```
+  psql "host=postgres-flex-ideatec.postgres.database.azure.com port=5432 dbname=db_ideatec user=admin_ideatec sslmode=require"
+  SELECT * FROM moto;
+  ```
 
-🏗️ Passos para rodar:
-1️⃣ Clone ou baixe o projeto
-2️⃣ Configure o Banco de Dados no arquivo src/main/resources/application.properties.
-3️⃣ Compile e execute o projeto.
-4️⃣ Acesse a API na URL padrão
-    http://localhost:8080
+## 📑 6. Estrutura do Projeto
 
------------------------------------------------------------------------
-    
-🔗 Endpoints Principais
-/api/motos – CRUD de motos
+```
+Sprint-3_DevOps
+  ├── src/main/java/...    # Código fonte Java (models, controllers, services, repos)
+  ├── src/main/resources/application.properties
+  ├── pom.xml              # Dependências Maven
+  ├── scripts/             # Scripts Bash para automação Azure
+  ├── database.sql         # Script SQL criação e população
+```
 
-/api/clientes – CRUD de clientes
+## 🛠️ 7. Solução de Problemas
 
-Funcionalidades como paginação, ordenação e filtros estão disponíveis via parâmetros na URL.
+- **Problemas de conectividade com o banco?**  
+  Verifique se o IP local está liberado no firewall do servidor PostgreSQL Azure.
 
-✅ Funcionalidades Implementadas
-✅ CRUD completo para Moto e Cliente
-✅ Relacionamento entre entidades
-✅ Busca com parâmetros
-✅ Paginação e ordenação
-✅ Validação de campos (Bean Validation)
-✅ Tratamento global de erros
-✅ Uso de DTOs para entrada e saída de dados
-✅ Cache para otimização de consultas
+- **Erro de autenticação no deploy?**  
+  Redefina deployment user via Azure CLI:
+  ```
+  az webapp deployment user set --user-name <usuario> --password <senha_forte>
+  ```
+
+- **App não inicia no Azure?**  
+  Cheque logs no portal:
+  - Web App > Logs de aplicativo
+  - Web App > Diagnóstico > Kudu/Console
+
+## 🤝 Colaboradores
+
+- Pedro Ladeira – [github.com/Pedro-Ladeira](https://github.com/Pedro-Ladeira)
+- Equipe DevOps 2025 FIAP
+
+## 📚 Referências
+
+- [Documentação Azure PostgreSQL Flexible Server](https://learn.microsoft.com/pt-br/azure/postgresql/flexible-server/)
+- [Documentação Spring Boot + PostgreSQL](https://spring.io/projects/spring-boot)
+- [API REST FIAP Padrão](https://portal.fiap.com.br/)
+
+> _Dúvidas, críticas ou sugestões? Crie uma issue pelo GitHub ou envie seu feedback no Classroom._
